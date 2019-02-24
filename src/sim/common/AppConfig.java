@@ -14,6 +14,10 @@ public class AppConfig {
 		return configs.get(key);
 	}
 	
+	public static int getInt(String key){
+		return Integer.parseInt(configs.get(key));
+	}
+	
 	public static Map<String,String> loadConfigs(){
 		Map<String,String> configs = new HashMap<String,String>();
 		InputStream inputStream = AppConfig.class.getClassLoader().getResourceAsStream("config.properties");
