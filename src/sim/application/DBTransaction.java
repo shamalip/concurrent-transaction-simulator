@@ -6,33 +6,29 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import sim.common.AppConfig;
 
 public class DBTransaction{
 	
+	protected String threadName = null;
+
 	public void runTransaction(List<String> statements) {
 		Connection conn = connect();
 		try {			
 			conn.setAutoCommit(false);
 			List<ResultSet> resultList = new ArrayList<>();
-			long qStartTime = 0, qEndTime = 0;
-			//start transaction time
-			long tStartTime = System.currentTimeMillis();
+			System.out.println("Transaction " + threadName + " start time: " + (new Date()).getTime());
 			for(String statement: statements) {
 				CallableStatement st = conn.prepareCall(statement);
-				qStartTime = System.currentTimeMillis();
 				ResultSet result = st.executeQuery();
-				qEndTime = System.currentTimeMillis();
-				System.out.println("Query Time:"+(qEndTime - qStartTime));
-				qEndTime = 0;
-				qStartTime = 0;
 				resultList.add(result);
+				
 			}			
 			conn.commit();
-			long tEndTime = System.currentTimeMillis();
-			System.out.println("Transaction Time:"+(tEndTime - tStartTime));
+			System.out.println("Transaction " + threadName + " finish time: " + (new Date()).getTime());
 		} catch (SQLException e) {
 			System.out.println("Rolling back due to : "+ e.getMessage());
 			try {
@@ -60,14 +56,8 @@ public class DBTransaction{
 
 	private Connection connect() {
 		Connection conn = null;
-		/*try {
-            Class.forName("com.mysql.jdbc.Driver");
-		} catch (ClassNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}*/
 		try {
-			conn = DriverManager.getConnection(AppConfig.get("DB_CONNECTION1"));//, AppConfig.get("DB_USER"), AppConfig.get("DB_PASSWORD"));
+			conn = DriverManager.getConnection(AppConfig.get("DB_CONNECTION"), AppConfig.get("DB_USER"), AppConfig.get("DB_PASSWORD"));
 			System.out.println("Connected to the database successfully.");
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
