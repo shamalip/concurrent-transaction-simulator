@@ -17,13 +17,22 @@ public class DBTransaction{
 		try {			
 			conn.setAutoCommit(false);
 			List<ResultSet> resultList = new ArrayList<>();
+			long qStartTime = 0, qEndTime = 0;
+			//start transaction time
+			long tStartTime = System.currentTimeMillis();
 			for(String statement: statements) {
 				CallableStatement st = conn.prepareCall(statement);
+				qStartTime = System.currentTimeMillis();
 				ResultSet result = st.executeQuery();
+				qEndTime = System.currentTimeMillis();
+				System.out.println("Query Time:"+(qEndTime - qStartTime));
+				qEndTime = 0;
+				qStartTime = 0;
 				resultList.add(result);
-				// TODO log the result and time taken.
 			}			
 			conn.commit();
+			long tEndTime = System.currentTimeMillis();
+			System.out.println("Transaction Time:"+(tEndTime - tStartTime));
 		} catch (SQLException e) {
 			System.out.println("Rolling back due to : "+ e.getMessage());
 			try {
@@ -51,8 +60,14 @@ public class DBTransaction{
 
 	private Connection connect() {
 		Connection conn = null;
+		/*try {
+            Class.forName("com.mysql.jdbc.Driver");
+		} catch (ClassNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}*/
 		try {
-			conn = DriverManager.getConnection(AppConfig.get("DB_CONNECTION"), AppConfig.get("DB_USER"), AppConfig.get("DB_PASSWORD"));
+			conn = DriverManager.getConnection(AppConfig.get("DB_CONNECTION1"));//, AppConfig.get("DB_USER"), AppConfig.get("DB_PASSWORD"));
 			System.out.println("Connected to the database successfully.");
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
