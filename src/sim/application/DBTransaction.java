@@ -1,36 +1,55 @@
 package sim.application;
 
-import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Date;
+import java.sql.Statement;
 import java.util.List;
 
 import sim.common.AppConfig;
 
 public class DBTransaction{
-	
-	protected String threadName = null;
 
+	protected String threadName = null;
+	static int throughput = 0;
+	//check query time
 	public void runTransaction(List<String> statements) {
 		Connection conn = connect();
-		try {			
+		try {		
+			System.out.println("Transaction" + threadName + " started");
 			conn.setAutoCommit(false);
-			List<ResultSet> resultList = new ArrayList<>();
-			System.out.println("Transaction " + threadName + " start time: " + (new Date()).getTime());
-			for(String statement: statements) {
-				CallableStatement st = conn.prepareCall(statement);
-				ResultSet result = st.executeQuery();
-				resultList.add(result);
-				
+			long qStartTime = 0, qEndTime = 0, avgQueryTime = 0, queriesNum = statements.size();
+			boolean selectQuery = false;
+			for(String statement: statements) 
+			{
+				Statement st = conn.createStatement();//ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+				qStartTime = System.nanoTime();
+				selectQuery = st.execute(statement);	
+				qEndTime = System.nanoTime();
+				if(selectQuery)
+				{
+					//System.out.println("Size of results " + st.getResultSet().last());
+					avgQueryTime += (qEndTime - qStartTime);
+				}
+				qEndTime = 0;
+				qStartTime = 0;
 			}			
 			conn.commit();
-			System.out.println("Transaction " + threadName + " finish time: " + (new Date()).getTime());
-		} catch (SQLException e) {
-			System.out.println("Rolling back due to : "+ e.getMessage());
+			synchronized (this) 
+			{
+				throughput++;
+		        //Files.write(Paths.get("/Users/sadeem/Downloads/project2/data/low_concurrency/"+threadName+".csv"), sb.toString().getBytes());
+			}
+			System.out.println("Transaction " + threadName + " finished");
+			if(selectQuery)
+			{
+				avgQueryTime = avgQueryTime / 1000000;//measure time in milliseconds
+				System.out.println(threadName+" average query time: " + avgQueryTime / queriesNum);
+			}
+			System.out.println("Throughput: " + throughput);
+		} 
+		catch (SQLException e) {
+			System.out.println("Rolling back in "+ threadName + " due to : "+ e.getMessage());
 			try {
 				if (conn != null) {
 					conn.rollback();
@@ -56,10 +75,13 @@ public class DBTransaction{
 
 	private Connection connect() {
 		Connection conn = null;
-		try {
+		try
+		{
+			//should open another connection to mysql and run both at the same time
 			conn = DriverManager.getConnection(AppConfig.get("DB_CONNECTION"), AppConfig.get("DB_USER"), AppConfig.get("DB_PASSWORD"));
-			System.out.println("Connected to the database successfully.");
-		} catch (SQLException e) {
+		} 
+		catch (SQLException e) 
+		{
 			System.out.println(e.getMessage());
 			throw new RuntimeException(e.getMessage());
 		}	 

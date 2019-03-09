@@ -15,10 +15,11 @@ import sim.common.Utils;
 public class ConcurrentSimulatorApp {
 
 	private static final int MPL = 50;
-	private static final int NUM_QUERIES_PER_THREAD = 100;
+	private static final int NUM_THREADS_FOR_INSERTS = 10;
+	private static final int NUM_THREADS_FOR_QUERIES = 5;
 
 	public static void main(String[] args) throws InterruptedException, IOException {
-		insertBaselineData();	
+		//insertBaselineData();	
 		startSimulation();
 	}
 
@@ -28,29 +29,39 @@ public class ConcurrentSimulatorApp {
 		BlockingQueue<String> search_queue = new LinkedBlockingQueue<>();
 
 		// 20 files will be used.
-		for(int i = 1; i <= AppConfig.getInt("TOTAL_FILES_COUNT"); i++){ 
-			File file = new File(AppConfig.get("INSERT_FILE")+7+i+".sql"); 
+		for(int i = 1; i <= AppConfig.getInt("TOTAL_FILES_COUNT"); i++)
+		{ 
+			System.out.println("reading t "+i);
+			File file = new File(AppConfig.get("INSERT_FILE")+(7+i)+".sql"); 
 			BufferedReader br = new BufferedReader(new FileReader(file)); 
 			String st; 
-			while ((st = br.readLine()) != null) {
+			while ((st = br.readLine()) != null) 
+			{
 				insert_queue.add(st);
 			} 
 			br.close();
-			file = new File(AppConfig.get("SEARCH_FILE")+7+i+".sql"); 
+			file = new File(AppConfig.get("SEARCH_FILE")+(7+i)+".sql"); 
 			br = new BufferedReader(new FileReader(file)); 
-			while ((st = br.readLine()) != null) {
-				insert_queue.add(st);
+			while ((st = br.readLine()) != null) 
+			{
+				search_queue.add(st);
 			} 
 			br.close();	
-			if(i == 1) {
-				for(int j=0; j < 40; j++)
-					executor.execute(new DBTransactionThread(insert_queue, NUM_QUERIES_PER_THREAD, "Thread-"+j));
-
-				for(int j=0; j < 10; j++)
-					executor.execute(new DBTransactionThread(search_queue, NUM_QUERIES_PER_THREAD, "Thread-"+j));
+			if(i == 1) 
+			{
+				for(int j=0; j < NUM_THREADS_FOR_INSERTS; j++)
+				{
+					executor.execute(new DBTransactionThread(insert_queue, insert_queue.size() / NUM_THREADS_FOR_INSERTS, "Thread-insert-"+j));
+				}
+				Thread.sleep(5000);//then start queries threads after 5 seconds
+				for(int j=0; j < NUM_THREADS_FOR_QUERIES; j++)
+				{
+					executor.execute(new DBTransactionThread(search_queue, search_queue.size() / NUM_THREADS_FOR_QUERIES, "Thread-query-"+j));
+				}
 			}
-			
-			Thread.sleep(300000);
+
+			Thread.sleep(30000);//then start reading next file after 30 seconds
+			System.out.println("sleep done");
 		}
 		executor.shutdown();
 	}
