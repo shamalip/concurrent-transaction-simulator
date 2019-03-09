@@ -27,10 +27,10 @@ public class Utils {
 		return lines; 
 	}
 
-	public static boolean isOnTime(String st, int time) throws ParseException {
+	public static boolean isOnTime(String st, long time) throws ParseException {
 		if(null == st || st.isEmpty())
 			return false;
-		Date d = new SimpleDateFormat("YYYY-mm-dd hh:mm:ss").parse(st.split("|")[0]);
+		Date d = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(st.split("\\|")[0]);
 		return (d.getTime() - time) <= 0;		
 	} 
 

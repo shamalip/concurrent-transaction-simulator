@@ -15,12 +15,12 @@ import sim.common.Utils;
 
 public class ConcurrentSimulatorApp {
 
-	private static final String SEP = "|";
+	private static final String SEP = "\\|";
 	private static final int SIMILATOR_TIMEFRAME = 120000000;
-	private static final int TIME_SLOT = 300000;
+	private static final long TIME_SLOT = 1510128300000L;
 	private static final int MPL = 50;
-	private static final int NUM_THREADS_FOR_INSERTS = 10;
-	private static final int NUM_THREADS_FOR_QUERIES = 5;
+	private static final int NUM_THREADS_FOR_INSERTS = 7;
+	private static final int NUM_THREADS_FOR_QUERIES = 3;
 
 	public static void main(String[] args) throws InterruptedException, IOException, ParseException {
 		//insertBaselineData();	
@@ -35,14 +35,16 @@ public class ConcurrentSimulatorApp {
 		BufferedReader ibr = new BufferedReader(new FileReader(insertFile));
 		File queryFile = new File(AppConfig.get("QUERY_FILE"));
 		BufferedReader qbr = new BufferedReader(new FileReader(queryFile));
-		int time = TIME_SLOT; // Until 5 mins
+		long time = TIME_SLOT; // Until 5 mins
 		long start= System.currentTimeMillis();
 		long end = start + SIMILATOR_TIMEFRAME;//run simulator for 20 minutes
 		boolean isFirstTime = true;
 		String st = null;
 		String qt = null;
 
+
 		while(System.currentTimeMillis() < end) {
+			System.out.println("TIME "+time);
 			if(!isFirstTime)
 			{
 				if(Utils.isOnTime(st, time)) {
@@ -54,8 +56,8 @@ public class ConcurrentSimulatorApp {
 				insert_queue.add(st.split(SEP)[1]);
 				st = null;
 			}
+			System.out.println("inserted some "+insert_queue.size());
 
-			
 			if(!isFirstTime)
 			{
 				if(Utils.isOnTime(qt, time)) {
@@ -67,24 +69,27 @@ public class ConcurrentSimulatorApp {
 				search_queue.add(qt.split(SEP)[1]);
 				qt = null;
 			}
+			System.out.println("inserted sss "+search_queue.size());
 
 			if(isFirstTime) {
 				for(int j=0; j < NUM_THREADS_FOR_INSERTS; j++)
 				{
 					executor.execute(new DBTransactionThread(insert_queue, insert_queue.size() / NUM_THREADS_FOR_INSERTS, "Thread-insert-"+j));
 				}
-				
+
 				for(int j=0; j < NUM_THREADS_FOR_QUERIES; j++)
 				{
 					executor.execute(new DBTransactionThread(search_queue, search_queue.size() / NUM_THREADS_FOR_QUERIES, "Thread-query-"+j));
 				}
+				System.out.println("started");
+
 			}
-			
+
 			Thread.sleep(3000);
 			isFirstTime = false;
 			time  = time + TIME_SLOT;
 		}
-		
+
 		ibr.close();
 		qbr.close();
 		executor.shutdown();
