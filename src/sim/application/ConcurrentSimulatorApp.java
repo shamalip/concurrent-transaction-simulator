@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,55 +15,78 @@ import sim.common.Utils;
 
 public class ConcurrentSimulatorApp {
 
+	private static final String SEP = "|";
+	private static final int SIMILATOR_TIMEFRAME = 120000000;
+	private static final int TIME_SLOT = 300000;
 	private static final int MPL = 50;
 	private static final int NUM_THREADS_FOR_INSERTS = 10;
 	private static final int NUM_THREADS_FOR_QUERIES = 5;
 
-	public static void main(String[] args) throws InterruptedException, IOException {
+	public static void main(String[] args) throws InterruptedException, IOException, ParseException {
 		//insertBaselineData();	
 		startSimulation();
 	}
 
-	private static void startSimulation() throws InterruptedException, IOException {
+	private static void startSimulation() throws InterruptedException, IOException, ParseException {
 		ExecutorService executor = Executors.newFixedThreadPool(MPL);
 		BlockingQueue<String> insert_queue = new LinkedBlockingQueue<>();
 		BlockingQueue<String> search_queue = new LinkedBlockingQueue<>();
+		File insertFile = new File(AppConfig.get("INSERT_FILE"));
+		BufferedReader ibr = new BufferedReader(new FileReader(insertFile));
+		File queryFile = new File(AppConfig.get("QUERY_FILE"));
+		BufferedReader qbr = new BufferedReader(new FileReader(queryFile));
+		int time = TIME_SLOT; // Until 5 mins
+		long start= System.currentTimeMillis();
+		long end = start + SIMILATOR_TIMEFRAME;//run simulator for 20 minutes
+		boolean isFirstTime = true;
+		String st = null;
+		String qt = null;
 
-		// 20 files will be used.
-		for(int i = 1; i <= AppConfig.getInt("TOTAL_FILES_COUNT"); i++)
-		{ 
-			System.out.println("reading t "+i);
-			File file = new File(AppConfig.get("INSERT_FILE")+(7+i)+".sql"); 
-			BufferedReader br = new BufferedReader(new FileReader(file)); 
-			String st; 
-			while ((st = br.readLine()) != null) 
+		while(System.currentTimeMillis() < end) {
+			if(!isFirstTime)
 			{
-				insert_queue.add(st);
-			} 
-			br.close();
-			file = new File(AppConfig.get("SEARCH_FILE")+(7+i)+".sql"); 
-			br = new BufferedReader(new FileReader(file)); 
-			while ((st = br.readLine()) != null) 
+				if(Utils.isOnTime(st, time)) {
+					insert_queue.add(st.split(SEP)[1]);
+					st = null;
+				}
+			}
+			while(st == null && Utils.isOnTime(st = ibr.readLine(), time)) {
+				insert_queue.add(st.split(SEP)[1]);
+				st = null;
+			}
+
+			
+			if(!isFirstTime)
 			{
-				search_queue.add(st);
-			} 
-			br.close();	
-			if(i == 1) 
-			{
+				if(Utils.isOnTime(qt, time)) {
+					search_queue.add(qt.split(SEP)[1]);
+					qt = null;
+				}
+			}
+			while(qt == null && Utils.isOnTime(qt = ibr.readLine(), time)) {
+				search_queue.add(qt.split(SEP)[1]);
+				qt = null;
+			}
+
+			if(isFirstTime) {
 				for(int j=0; j < NUM_THREADS_FOR_INSERTS; j++)
 				{
 					executor.execute(new DBTransactionThread(insert_queue, insert_queue.size() / NUM_THREADS_FOR_INSERTS, "Thread-insert-"+j));
 				}
-				Thread.sleep(5000);//then start queries threads after 5 seconds
+				
 				for(int j=0; j < NUM_THREADS_FOR_QUERIES; j++)
 				{
 					executor.execute(new DBTransactionThread(search_queue, search_queue.size() / NUM_THREADS_FOR_QUERIES, "Thread-query-"+j));
 				}
 			}
-
-			Thread.sleep(30000);//then start reading next file after 30 seconds
-			System.out.println("sleep done");
+			
+			Thread.sleep(3000);
+			isFirstTime = false;
+			time  = time + TIME_SLOT;
 		}
+		
+		ibr.close();
+		qbr.close();
 		executor.shutdown();
 	}
 
