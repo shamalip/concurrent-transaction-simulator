@@ -91,10 +91,15 @@ public class ConcurrentSimulatorApp {
 
 		ibr.close();
 		qbr.close();
-		System.out.println("AVG QUERY TIME "+DBTransaction.getAvgQueryTime());
-		System.out.println("AVG TRAN SIZE "+DBTransaction.getAvgTranSize());
-		System.out.println("QUERY NUM "+DBTransaction.getQueriesNum());
-		System.out.println("THROUGHPUT "+DBTransaction.getThroughput());
+		System.out.println("Throughput " + DBTransaction.getTotalNumOfTransactions());
+		System.out.println("Average Query Time "+DBTransaction.getTotalQueryTime() / DBTransaction.getTotalNumOfQueries());
+		System.out.println("Average overall time "+DBTransaction.getTotalTransactionTime() / DBTransaction.getTotalNumOfTransactions());
+		System.out.println("----------------------------------\n");
+		System.out.println("Total Transactions time " + DBTransaction.getTotalTransactionTime());
+		System.out.println("Total Queries time " + DBTransaction.getTotalQueryTime());
+		System.out.println("Total Number of queries time " + DBTransaction.getTotalNumOfQueries());
+		System.out.println("Total operations in a transaction(TRANSACTION SIZE) " + DBTransaction.getTotalTranSize());
+		System.out.println("Average transaction size " + DBTransaction.getTotalTranSize() / DBTransaction.getTotalNumOfTransactions());
 		executor.shutdown();
 		System.exit(0);
 	}

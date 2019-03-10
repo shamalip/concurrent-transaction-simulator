@@ -1,15 +1,10 @@
 package sim.application;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Date;
 import java.util.List;
 
 import sim.common.AppConfig;
@@ -17,17 +12,17 @@ import sim.common.AppConfig;
 public class DBTransaction{
 
 	protected String threadName = null;
-	static int throughput = 0;
-	static long startTime = System.currentTimeMillis();
-	static long elapsedTime = 0L;
-	static double avgTranSize = 0;
-	private static long avgQueryTime = 0;
-	private static long queriesNum = 0;
+	static int totalNumOfTransactions = 0;
+	static double totalTranSize = 0;
+	private static long totalQueryTime = 0;
+	private static long totalNumOfQueries = 0;
+	static long totalTransactionTime = 0;
 	public void runTransaction(List<String> statements) throws IOException {
 		Connection conn = connect();
 		try {		
+			long qStartTime = 0, qEndTime = 0, locAvgQueryTime = 0, tStartTime = 0, tEndTime = 0;
+			tStartTime = System.currentTimeMillis();
 			conn.setAutoCommit(false);
-			long qStartTime = 0, qEndTime = 0, locAvgQueryTime = 0; 
 			boolean selectQuery = false;
 			for(String statement: statements) 
 			{
@@ -43,14 +38,16 @@ public class DBTransaction{
 				qStartTime = 0;
 			}			
 			conn.commit();
+			tEndTime = System.currentTimeMillis();
 			synchronized (this) 
 			{
-					throughput++;
-					avgTranSize+= statements.size();
+				totalNumOfTransactions++;
+					totalTranSize+= statements.size();
+					totalTransactionTime+= (tEndTime - tStartTime);
 				if(selectQuery)
 				{
-					queriesNum += statements.size();
-					avgQueryTime += (locAvgQueryTime / 1000000);
+					totalNumOfQueries += statements.size();
+					totalQueryTime += (locAvgQueryTime / 1000000);
 				}
 			}
 
@@ -70,12 +67,16 @@ public class DBTransaction{
 		}
 	}
 
-	public static int getThroughput() {
-		return throughput;
+	public static long getTotalTransactionTime() {
+		return totalTransactionTime;
 	}
 
-	public static double getAvgTranSize() {
-		return avgTranSize;
+	public static int getTotalNumOfTransactions() {
+		return totalNumOfTransactions;
+	}
+
+	public static double getTotalTranSize() {
+		return totalTranSize;
 	}
 
 	private void close(Connection conn) {
@@ -92,8 +93,7 @@ public class DBTransaction{
 		Connection conn = null;
 		try
 		{
-			//should open another connection to mysql and run both at the same time
-			conn = DriverManager.getConnection(AppConfig.get("DB_CONNECTION"), AppConfig.get("DB_USER"), AppConfig.get("DB_PASSWORD"));
+			conn = DriverManager.getConnection(AppConfig.get("DB_CONNECTION1"), AppConfig.get("DB_USER"), AppConfig.get("DB_PASSWORD"));
 		} 
 		catch (SQLException e) 
 		{
@@ -103,12 +103,12 @@ public class DBTransaction{
 		return conn;
 	}
 
-	public static long getAvgQueryTime() {
-		return avgQueryTime;
+	public static long getTotalQueryTime() {
+		return totalQueryTime;
 	}
 
-	public static long getQueriesNum() {
-		return queriesNum;
+	public static long getTotalNumOfQueries() {
+		return totalNumOfQueries;
 	}
 	
 }
