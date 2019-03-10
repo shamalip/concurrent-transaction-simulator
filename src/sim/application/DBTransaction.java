@@ -1,9 +1,15 @@
 package sim.application;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Date;
 import java.util.List;
 
 import sim.common.AppConfig;
@@ -12,13 +18,16 @@ public class DBTransaction{
 
 	protected String threadName = null;
 	static int throughput = 0;
-	//check query time
-	public void runTransaction(List<String> statements) {
+	static long startTime = System.currentTimeMillis();
+	static long elapsedTime = 0L;
+	static double avgTranSize = 0;
+	private static long avgQueryTime = 0;
+	private static long queriesNum = 0;
+	public void runTransaction(List<String> statements) throws IOException {
 		Connection conn = connect();
 		try {		
-			System.out.println("Transaction" + threadName + " started");
 			conn.setAutoCommit(false);
-			long qStartTime = 0, qEndTime = 0, avgQueryTime = 0, queriesNum = statements.size();
+			long qStartTime = 0, qEndTime = 0, locAvgQueryTime = 0; 
 			boolean selectQuery = false;
 			for(String statement: statements) 
 			{
@@ -28,8 +37,7 @@ public class DBTransaction{
 				qEndTime = System.nanoTime();
 				if(selectQuery)
 				{
-					//System.out.println("Size of results " + st.getResultSet().last());
-					avgQueryTime += (qEndTime - qStartTime);
+					locAvgQueryTime += (qEndTime - qStartTime);
 				}
 				qEndTime = 0;
 				qStartTime = 0;
@@ -37,16 +45,15 @@ public class DBTransaction{
 			conn.commit();
 			synchronized (this) 
 			{
-				throughput++;
-		        //Files.write(Paths.get("/Users/sadeem/Downloads/project2/data/low_concurrency/"+threadName+".csv"), sb.toString().getBytes());
+					throughput++;
+					avgTranSize+= statements.size();
+				if(selectQuery)
+				{
+					queriesNum += statements.size();
+					avgQueryTime += (locAvgQueryTime / 1000000);
+				}
 			}
-			System.out.println("Transaction " + threadName + " finished");
-			if(selectQuery)
-			{
-				avgQueryTime = avgQueryTime / 1000000;//measure time in milliseconds
-				System.out.println(threadName+" average query time: " + avgQueryTime / queriesNum);
-			}
-			System.out.println("Throughput: " + throughput);
+
 		} 
 		catch (SQLException e) {
 			System.out.println("Rolling back in "+ threadName + " due to : "+ e.getMessage());
@@ -61,6 +68,14 @@ public class DBTransaction{
 		finally {
 			close(conn);		
 		}
+	}
+
+	public static int getThroughput() {
+		return throughput;
+	}
+
+	public static double getAvgTranSize() {
+		return avgTranSize;
 	}
 
 	private void close(Connection conn) {
@@ -87,4 +102,13 @@ public class DBTransaction{
 		}	 
 		return conn;
 	}
+
+	public static long getAvgQueryTime() {
+		return avgQueryTime;
+	}
+
+	public static long getQueriesNum() {
+		return queriesNum;
+	}
+	
 }

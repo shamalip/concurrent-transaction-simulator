@@ -1,5 +1,6 @@
 package sim.application;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -32,7 +33,12 @@ public class DBTransactionThread extends DBTransaction implements Runnable  {
 						queries.add(query);	
 					}
 				}		
-				runTransaction(queries);
+				try {
+					runTransaction(queries);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 			try 
 			{

@@ -16,11 +16,13 @@ import sim.common.Utils;
 public class ConcurrentSimulatorApp {
 
 	private static final String SEP = "\\|";
-	private static final int SIMILATOR_TIMEFRAME = 120000000;
-	private static final long TIME_SLOT = 1510128300000L;
-	private static final int MPL = 50;
+	private static final long SIMILATOR_TIMEFRAME = 900000;//run for 15 minutes
+	private static final long TIME_SLOT = 300000L;
+	private static final int MPL = 10;
 	private static final int NUM_THREADS_FOR_INSERTS = 7;
 	private static final int NUM_THREADS_FOR_QUERIES = 3;
+	private static final int TRANSACTION_MAX_INSERT_SIZE = 200;
+	private static final int TRANSACTION_MAX_QUERY_SIZE = 2;
 
 	public static void main(String[] args) throws InterruptedException, IOException, ParseException {
 		//insertBaselineData();	
@@ -35,7 +37,7 @@ public class ConcurrentSimulatorApp {
 		BufferedReader ibr = new BufferedReader(new FileReader(insertFile));
 		File queryFile = new File(AppConfig.get("QUERY_FILE"));
 		BufferedReader qbr = new BufferedReader(new FileReader(queryFile));
-		long time = TIME_SLOT; // Until 5 mins
+		long time = 1510128000000L + TIME_SLOT ; // Until 5 mins
 		long start= System.currentTimeMillis();
 		long end = start + SIMILATOR_TIMEFRAME;//run simulator for 20 minutes
 		boolean isFirstTime = true;
@@ -56,7 +58,6 @@ public class ConcurrentSimulatorApp {
 				insert_queue.add(st.split(SEP)[1]);
 				st = null;
 			}
-			System.out.println("inserted some "+insert_queue.size());
 
 			if(!isFirstTime)
 			{
@@ -65,37 +66,40 @@ public class ConcurrentSimulatorApp {
 					qt = null;
 				}
 			}
-			while(qt == null && Utils.isOnTime(qt = ibr.readLine(), time)) {
+			while(qt == null && Utils.isOnTime(qt = qbr.readLine(), time)) {
 				search_queue.add(qt.split(SEP)[1]);
 				qt = null;
 			}
-			System.out.println("inserted sss "+search_queue.size());
 
 			if(isFirstTime) {
 				for(int j=0; j < NUM_THREADS_FOR_INSERTS; j++)
 				{
-					executor.execute(new DBTransactionThread(insert_queue, insert_queue.size() / NUM_THREADS_FOR_INSERTS, "Thread-insert-"+j));
+					executor.execute(new DBTransactionThread(insert_queue, TRANSACTION_MAX_INSERT_SIZE , "Thread-insert-"+j));
 				}
 
 				for(int j=0; j < NUM_THREADS_FOR_QUERIES; j++)
 				{
-					executor.execute(new DBTransactionThread(search_queue, search_queue.size() / NUM_THREADS_FOR_QUERIES, "Thread-query-"+j));
+					executor.execute(new DBTransactionThread(search_queue, TRANSACTION_MAX_QUERY_SIZE , "Thread-query-"+j));
 				}
-				System.out.println("started");
 
 			}
 
-			Thread.sleep(3000);
+			Thread.sleep(10000);
 			isFirstTime = false;
 			time  = time + TIME_SLOT;
 		}
 
 		ibr.close();
 		qbr.close();
+		System.out.println("AVG QUERY TIME "+DBTransaction.getAvgQueryTime());
+		System.out.println("AVG TRAN SIZE "+DBTransaction.getAvgTranSize());
+		System.out.println("QUERY NUM "+DBTransaction.getQueriesNum());
+		System.out.println("THROUGHPUT "+DBTransaction.getThroughput());
 		executor.shutdown();
+		System.exit(0);
 	}
 
-	private static void insertBaselineData() {
+	private static void insertBaselineData() throws IOException {
 		DBTransaction d = new DBTransaction();
 		d.runTransaction(Utils.readFileInToList(AppConfig.get("METADATA_FILE")));
 	}
