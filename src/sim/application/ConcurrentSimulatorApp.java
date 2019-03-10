@@ -16,7 +16,7 @@ import sim.common.Utils;
 public class ConcurrentSimulatorApp {
 
 	private static final String SEP = "\\|";
-	private static final long SIMILATOR_TIMEFRAME = 900000;//run for 15 minutes
+	private static final long SIMILATOR_TIMEFRAME = 1200000;//run for 20 minutes
 	private static final long TIME_SLOT = 300000L;
 	private static final int MPL = 10;
 	private static final int NUM_THREADS_FOR_INSERTS = 7;
@@ -97,7 +97,7 @@ public class ConcurrentSimulatorApp {
 		System.out.println("----------------------------------\n");
 		System.out.println("Total Transactions time " + DBTransaction.getTotalTransactionTime());
 		System.out.println("Total Queries time " + DBTransaction.getTotalQueryTime());
-		System.out.println("Total Number of queries time " + DBTransaction.getTotalNumOfQueries());
+		System.out.println("Total Number of queries " + DBTransaction.getTotalNumOfQueries());
 		System.out.println("Total operations in a transaction(TRANSACTION SIZE) " + DBTransaction.getTotalTranSize());
 		System.out.println("Average transaction size " + DBTransaction.getTotalTranSize() / DBTransaction.getTotalNumOfTransactions());
 		executor.shutdown();
